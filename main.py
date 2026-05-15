@@ -1,6 +1,7 @@
 import io
 import os
 import tempfile
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -11,7 +12,9 @@ from pdf_parser import extract_invoice_data
 from xml_generator import generate_xml
 
 app = FastAPI(title="PDF → XML для Диадок")
-templates = Jinja2Templates(directory="templates")
+
+BASE_DIR = Path(__file__).parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse)
