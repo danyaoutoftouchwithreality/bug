@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pip install *)",
       "Bash(python3 -c ' *)",
-      "Bash(pip3 install *)"
+      "Bash(pip3 install *)",
+      "Bash(iconv -f windows-1251 -t utf-8 \"/Users/dolly/Downloads/ON_NSCHFDOPPR_2130134295_165501001_7710226911_771001001_20260512_cf9ab053-b8a0-48bd-93ac-2b8bc13e0782_0_0_0_0_0_00.xml.txt\")"
     ]
   }
 }

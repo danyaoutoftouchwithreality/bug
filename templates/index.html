@@ -332,9 +332,34 @@
           <label>КПП</label>
           <input type="text" name="seller_kpp" id="seller_kpp">
         </div>
+        <div class="field">
+          <label>ОКПО</label>
+          <input type="text" name="seller_okpo" id="seller_okpo">
+        </div>
         <div class="field" style="grid-column:span 3">
           <label>Адрес</label>
           <input type="text" name="seller_address" id="seller_address" required>
+        </div>
+      </div>
+
+      <!-- Банковские реквизиты продавца -->
+      <div class="section-label">Банковские реквизиты продавца</div>
+      <div class="grid">
+        <div class="field">
+          <label>Расчётный счёт</label>
+          <input type="text" name="seller_bank_account" id="seller_bank_account" placeholder="40702810...">
+        </div>
+        <div class="field">
+          <label>Наименование банка</label>
+          <input type="text" name="seller_bank_name" id="seller_bank_name">
+        </div>
+        <div class="field">
+          <label>БИК</label>
+          <input type="text" name="seller_bank_bik" id="seller_bank_bik">
+        </div>
+        <div class="field">
+          <label>Корр. счёт</label>
+          <input type="text" name="seller_bank_korr" id="seller_bank_korr">
         </div>
       </div>
 
@@ -355,6 +380,10 @@
           <label>КПП (для ЮЛ)</label>
           <input type="text" name="buyer_kpp" id="buyer_kpp">
         </div>
+        <div class="field">
+          <label>ОКПО</label>
+          <input type="text" name="buyer_okpo" id="buyer_okpo">
+        </div>
         <div class="field" style="grid-column:span 3">
           <label>Адрес</label>
           <input type="text" name="buyer_address" id="buyer_address" required>
@@ -362,23 +391,57 @@
       </div>
 
       <!-- Документ об отгрузке -->
-      <div class="section-label">Документ об отгрузке (акт)</div>
+      <div class="section-label">Документ об отгрузке</div>
       <div class="grid">
         <div class="field">
           <label>Наименование документа</label>
-          <input type="text" name="shipment_doc_name" id="shipment_doc_name" placeholder="АКТ ОКАЗАННЫХ УСЛУГ">
+          <input type="text" name="shipment_doc_name" id="shipment_doc_name" placeholder="Универсальный передаточный документ">
         </div>
         <div class="field">
           <label>Номер документа</label>
           <input type="text" name="shipment_doc_number" id="shipment_doc_number">
         </div>
         <div class="field">
-          <label>Дата документа (ДД.ММ.ГГГГ)</label>
+          <label>Дата (ДД.ММ.ГГГГ)</label>
           <input type="text" name="shipment_doc_date" id="shipment_doc_date">
         </div>
+      </div>
+
+      <!-- Договор (основание) -->
+      <div class="section-label">Договор (основание передачи)</div>
+      <div class="grid cols3">
         <div class="field">
-          <label>Руководитель (подписант)</label>
+          <label>Наименование</label>
+          <input type="text" name="basis_doc_name" id="basis_doc_name" placeholder="Договор">
+        </div>
+        <div class="field">
+          <label>Номер договора</label>
+          <input type="text" name="basis_doc_number" id="basis_doc_number">
+        </div>
+        <div class="field">
+          <label>Дата договора (ДД.ММ.ГГГГ)</label>
+          <input type="text" name="basis_doc_date" id="basis_doc_date">
+        </div>
+      </div>
+
+      <!-- Подписант -->
+      <div class="section-label">Подписант</div>
+      <div class="grid">
+        <div class="field">
+          <label>ФИО подписанта</label>
           <input type="text" name="signer_name" id="signer_name">
+        </div>
+        <div class="field">
+          <label>Должность</label>
+          <input type="text" name="signer_position" id="signer_position" value="Генеральный директор">
+        </div>
+        <div class="field">
+          <label>Содержание операции</label>
+          <input type="text" name="transfer_content" id="transfer_content" value="Услуги оказаны в полном объеме">
+        </div>
+        <div class="field">
+          <label>Вид операции</label>
+          <input type="text" name="transfer_type" id="transfer_type" value="Продажа">
         </div>
       </div>
 
@@ -549,6 +612,8 @@
     set('shipment_doc_number', d.shipment_doc_number);
     set('shipment_doc_date', d.shipment_doc_date);
     set('signer_name', d.signer_name);
+    set('basis_doc_number', d.contract_number);
+    set('basis_doc_name', d.contract_number ? 'Договор' : '');
     set('total_no_vat', d.total_no_vat);
     set('total_vat', d.total_vat);
     set('total_with_vat', d.total_with_vat);

@@ -4,7 +4,6 @@ import tempfile
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
@@ -42,21 +41,42 @@ async def parse_pdf(file: UploadFile = File(...)):
 
 @app.post("/generate")
 async def generate(
+    # Счёт-фактура
     invoice_number: str = Form(...),
     invoice_date: str = Form(...),
+    # Продавец
     seller_name: str = Form(...),
     seller_inn: str = Form(...),
     seller_kpp: str = Form(''),
     seller_address: str = Form(...),
+    seller_okpo: str = Form(''),
+    seller_bank_account: str = Form(''),
+    seller_bank_name: str = Form(''),
+    seller_bank_bik: str = Form(''),
+    seller_bank_korr: str = Form(''),
+    # Покупатель
     buyer_name: str = Form(...),
     buyer_inn: str = Form(...),
     buyer_kpp: str = Form(''),
     buyer_address: str = Form(...),
-    currency_code: str = Form('643'),
+    buyer_okpo: str = Form(''),
+    # Документ-основание
     shipment_doc_name: str = Form(''),
     shipment_doc_number: str = Form(''),
     shipment_doc_date: str = Form(''),
-    # item fields (single item for now; extend as needed)
+    # Договор
+    basis_doc_name: str = Form(''),
+    basis_doc_number: str = Form(''),
+    basis_doc_date: str = Form(''),
+    # Передача
+    transfer_content: str = Form('Услуги оказаны в полном объеме'),
+    transfer_type: str = Form('Продажа'),
+    # Подписант
+    signer_name: str = Form(''),
+    signer_position: str = Form('Генеральный директор'),
+    # Валюта
+    currency_code: str = Form('643'),
+    # Товар (одна строка)
     item_num: str = Form('1'),
     item_name: str = Form(...),
     item_description: str = Form(''),
@@ -68,10 +88,10 @@ async def generate(
     item_vat_rate: str = Form(...),
     item_vat_amount: str = Form(...),
     item_amount_with_vat: str = Form(...),
+    # Итого
     total_no_vat: str = Form(...),
     total_vat: str = Form(...),
     total_with_vat: str = Form(...),
-    signer_name: str = Form(''),
 ):
     data = {
         'invoice_number': invoice_number,
@@ -80,14 +100,27 @@ async def generate(
         'seller_inn': seller_inn,
         'seller_kpp': seller_kpp,
         'seller_address': seller_address,
+        'seller_okpo': seller_okpo,
+        'seller_bank_account': seller_bank_account,
+        'seller_bank_name': seller_bank_name,
+        'seller_bank_bik': seller_bank_bik,
+        'seller_bank_korr': seller_bank_korr,
         'buyer_name': buyer_name,
         'buyer_inn': buyer_inn,
         'buyer_kpp': buyer_kpp,
         'buyer_address': buyer_address,
-        'currency_code': currency_code,
+        'buyer_okpo': buyer_okpo,
         'shipment_doc_name': shipment_doc_name,
         'shipment_doc_number': shipment_doc_number,
         'shipment_doc_date': shipment_doc_date,
+        'basis_doc_name': basis_doc_name,
+        'basis_doc_number': basis_doc_number,
+        'basis_doc_date': basis_doc_date,
+        'transfer_content': transfer_content,
+        'transfer_type': transfer_type,
+        'signer_name': signer_name,
+        'signer_position': signer_position,
+        'currency_code': currency_code,
         'items': [{
             'num': item_num,
             'name': item_name,
@@ -104,17 +137,16 @@ async def generate(
         'total_no_vat': total_no_vat,
         'total_vat': total_vat,
         'total_with_vat': total_with_vat,
-        'signer_name': signer_name,
     }
 
     try:
-        xml_content = generate_xml(data)
+        xml_bytes = generate_xml(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка генерации XML: {e}")
 
-    filename = f"UPD_{invoice_number}_{invoice_date.replace('.', '')}.xml"
+    filename = f"ON_NSCHFDOPPR_{buyer_inn}_{seller_inn}_{invoice_date.replace('.', '')}.xml"
     return StreamingResponse(
-        io.BytesIO(xml_content.encode('utf-8')),
+        io.BytesIO(xml_bytes),
         media_type='application/xml',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
