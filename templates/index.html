@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF → XML для Диадок</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1565c0;
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    header svg { flex-shrink: 0; }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header p { font-size: .8rem; opacity: .8; margin-top: 2px; }
+
+    .container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+
+    /* Steps indicator */
+    .steps {
+      display: flex;
+      align-items: center;
+      margin-bottom: 28px;
+      gap: 0;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .85rem;
+      color: #90a4ae;
+    }
+    .step.active { color: #1565c0; font-weight: 600; }
+    .step.done { color: #388e3c; }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .step-line { flex: 1; height: 2px; background: #cfd8dc; margin: 0 8px; }
+
+    /* Cards */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1565c0;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e3f2fd;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #90caf9;
+      border-radius: 10px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: #f8fbff;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: #1565c0; background: #e3f2fd; }
+    .upload-zone svg { color: #90caf9; margin-bottom: 12px; }
+    .upload-zone p { color: #546e7a; font-size: .9rem; }
+    .upload-zone strong { color: #1565c0; }
+    #file-input { display: none; }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 24px;
+      color: #1565c0;
+    }
+    .spinner svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-box {
+      display: none;
+      background: #ffebee;
+      border: 1px solid #ef9a9a;
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: #c62828;
+      font-size: .9rem;
+      margin-top: 16px;
+    }
+
+    /* Form grid */
+    .section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #78909c;
+      margin: 20px 0 12px;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+    .grid.full { grid-template-columns: 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: .78rem; color: #546e7a; font-weight: 500; }
+    .field input, .field select {
+      border: 1px solid #cfd8dc;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: .9rem;
+      color: #1a1a2e;
+      transition: border-color .15s;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: #1565c0;
+      box-shadow: 0 0 0 3px rgba(21,101,192,.1);
+    }
+
+    /* Items table */
+    .items-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .items-table th {
+      background: #e3f2fd;
+      color: #1565c0;
+      font-weight: 600;
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 2px solid #90caf9;
+    }
+    .items-table td { padding: 8px; border-bottom: 1px solid #eceff1; }
+    .items-table input {
+      width: 100%;
+      border: 1px solid #cfd8dc;
+      border-radius: 4px;
+      padding: 5px 7px;
+      font-size: .85rem;
+    }
+    .items-table input:focus {
+      outline: none;
+      border-color: #1565c0;
+    }
+
+    /* Totals */
+    .totals-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 32px;
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #e8f5e9;
+      border-radius: 8px;
+    }
+    .total-item { text-align: right; }
+    .total-item label { display: block; font-size: .75rem; color: #546e7a; }
+    .total-item input {
+      border: 1px solid #a5d6a7;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: .95rem;
+      font-weight: 600;
+      color: #2e7d32;
+      width: 130px;
+      text-align: right;
+    }
+    .total-item input:focus {
+      outline: none;
+      border-color: #388e3c;
+    }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 12px; margin-top: 24px; }
+    .btn {
+      padding: 11px 24px;
+      border-radius: 8px;
+      border: none;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary { background: #1565c0; color: #fff; }
+    .btn-primary:hover { background: #0d47a1; }
+    .btn-primary:disabled { background: #90a4ae; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      color: #546e7a;
+      border: 1px solid #cfd8dc;
+    }
+    .btn-outline:hover { background: #f5f5f5; }
+
+    /* Success */
+    .success-box {
+      display: none;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 16px;
+    }
+    .success-box h3 { color: #2e7d32; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .success-box p { color: #388e3c; font-size: .9rem; }
+
+    /* Hidden */
+    #form-section { display: none; }
+
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+      .grid.cols3 { grid-template-columns: 1fr; }
+      .totals-row { flex-direction: column; align-items: flex-end; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+  </svg>
+  <div>
+    <h1>PDF → XML для Контур.Диадок</h1>
+    <p>Загрузите счёт-фактуру PDF — получите УПД XML для загрузки в Диадок</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="step-num">1</div>
+      <span>Загрузка PDF</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step2">
+      <div class="step-num">2</div>
+      <span>Проверка данных</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step3">
+      <div class="step-num">3</div>
+      <span>Скачать XML</span>
+    </div>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card" id="upload-card">
+    <div class="card-title">Шаг 1 — Загрузите PDF со счётом-фактурой</div>
+
+    <div class="upload-zone" id="upload-zone">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <p><strong>Перетащите PDF</strong> сюда или <strong>нажмите для выбора</strong></p>
+      <p style="margin-top:6px;font-size:.8rem;color:#90a4ae">Поддерживаются счета-фактуры ООО «Оранж Бизнес Сервисез»</p>
+    </div>
+    <input type="file" id="file-input" accept=".pdf">
+
+    <div class="spinner" id="spinner">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+      <p style="margin-top:8px;font-size:.9rem">Анализирую PDF…</p>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <!-- Form section -->
+  <form id="form-section" action="/generate" method="post">
+
+    <!-- Счёт-фактура -->
+    <div class="card">
+      <div class="card-title">Шаг 2 — Проверьте и скорректируйте данные</div>
+
+      <div class="section-label">Счёт-фактура</div>
+      <div class="grid">
+        <div class="field">
+          <label>Номер счёт-фактуры</label>
+          <input type="text" name="invoice_number" id="invoice_number" required>
+        </div>
+        <div class="field">
+          <label>Дата (ДД.ММ.ГГГГ)</label>
+          <input type="text" name="invoice_date" id="invoice_date" placeholder="30.04.2026" required>
+        </div>
+      </div>
+
+      <!-- Продавец -->
+      <div class="section-label">Продавец</div>
+      <div class="grid full">
+        <div class="field">
+          <label>Наименование организации</label>
+          <input type="text" name="seller_name" id="seller_name" required>
+        </div>
+      </div>
+      <div class="grid cols3">
+        <div class="field">
+          <label>ИНН</label>
+          <input type="text" name="seller_inn" id="seller_inn" required>
+        </div>
+        <div class="field">
+          <label>КПП</label>
+          <input type="text" name="seller_kpp" id="seller_kpp">
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label>Адрес</label>
+          <input type="text" name="seller_address" id="seller_address" required>
+        </div>
+      </div>
+
+      <!-- Покупатель -->
+      <div class="section-label">Покупатель</div>
+      <div class="grid full">
+        <div class="field">
+          <label>Наименование / ФИО ИП</label>
+          <input type="text" name="buyer_name" id="buyer_name" required>
+        </div>
+      </div>
+      <div class="grid cols3">
+        <div class="field">
+          <label>ИНН</label>
+          <input type="text" name="buyer_inn" id="buyer_inn" required>
+        </div>
+        <div class="field">
+          <label>КПП (для ЮЛ)</label>
+          <input type="text" name="buyer_kpp" id="buyer_kpp">
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label>Адрес</label>
+          <input type="text" name="buyer_address" id="buyer_address" required>
+        </div>
+      </div>
+
+      <!-- Документ об отгрузке -->
+      <div class="section-label">Документ об отгрузке (акт)</div>
+      <div class="grid">
+        <div class="field">
+          <label>Наименование документа</label>
+          <input type="text" name="shipment_doc_name" id="shipment_doc_name" placeholder="АКТ ОКАЗАННЫХ УСЛУГ">
+        </div>
+        <div class="field">
+          <label>Номер документа</label>
+          <input type="text" name="shipment_doc_number" id="shipment_doc_number">
+        </div>
+        <div class="field">
+          <label>Дата документа (ДД.ММ.ГГГГ)</label>
+          <input type="text" name="shipment_doc_date" id="shipment_doc_date">
+        </div>
+        <div class="field">
+          <label>Руководитель (подписант)</label>
+          <input type="text" name="signer_name" id="signer_name">
+        </div>
+      </div>
+
+      <!-- Скрытые поля -->
+      <input type="hidden" name="currency_code" id="currency_code" value="643">
+    </div>
+
+    <!-- Товары/услуги -->
+    <div class="card">
+      <div class="card-title">Состав счёт-фактуры</div>
+      <div style="overflow-x:auto">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Наименование товара/услуги</th>
+              <th>Описание (контракт)</th>
+              <th>Код ОКЕИ</th>
+              <th>Ед.изм.</th>
+              <th>Кол-во</th>
+              <th>Цена</th>
+              <th>Сумма без НДС</th>
+              <th>Ставка НДС</th>
+              <th>Сумма НДС</th>
+              <th>Итого с НДС</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="text" name="item_num" id="item_num" value="1" style="width:40px"></td>
+              <td><input type="text" name="item_name" id="item_name" required style="min-width:160px"></td>
+              <td><input type="text" name="item_description" id="item_description" style="min-width:160px"></td>
+              <td><input type="text" name="item_unit_code" id="item_unit_code" style="width:70px"></td>
+              <td><input type="text" name="item_unit_name" id="item_unit_name" style="width:70px"></td>
+              <td><input type="text" name="item_qty" id="item_qty" style="width:60px" required></td>
+              <td><input type="text" name="item_price" id="item_price" style="width:90px" required></td>
+              <td><input type="text" name="item_amount_no_vat" id="item_amount_no_vat" style="width:100px" required></td>
+              <td><input type="text" name="item_vat_rate" id="item_vat_rate" style="width:70px" required></td>
+              <td><input type="text" name="item_vat_amount" id="item_vat_amount" style="width:100px" required></td>
+              <td><input type="text" name="item_amount_with_vat" id="item_amount_with_vat" style="width:110px" required></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Итого -->
+      <div class="totals-row">
+        <div class="total-item">
+          <label>Итого без НДС, руб.</label>
+          <input type="text" name="total_no_vat" id="total_no_vat" required>
+        </div>
+        <div class="total-item">
+          <label>Сумма НДС, руб.</label>
+          <input type="text" name="total_vat" id="total_vat" required>
+        </div>
+        <div class="total-item">
+          <label>Всего к оплате, руб.</label>
+          <input type="text" name="total_with_vat" id="total_with_vat" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-row">
+      <button type="button" class="btn btn-outline" onclick="resetForm()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+        </svg>
+        Загрузить другой PDF
+      </button>
+      <button type="submit" class="btn btn-primary" id="generate-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/>
+          <line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+        Создать XML и скачать
+      </button>
+    </div>
+
+    <div class="success-box" id="success-box">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        XML сформирован!
+      </h3>
+      <p>Файл скачан. Откройте Контур.Диадок, перейдите в раздел «Входящие» или «Исходящие» и загрузите XML через кнопку «Загрузить документ».</p>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('file-input');
+  const spinner = document.getElementById('spinner');
+  const errorBox = document.getElementById('error-box');
+  const formSection = document.getElementById('form-section');
+  const uploadCard = document.getElementById('upload-card');
+
+  // Drag & drop
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  async function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showError('Пожалуйста, загрузите PDF-файл.');
+      return;
+    }
+
+    errorBox.style.display = 'none';
+    uploadZone.style.display = 'none';
+    spinner.style.display = 'block';
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+      const res = await fetch('/parse', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.detail || 'Ошибка разбора PDF');
+        uploadZone.style.display = 'block';
+        spinner.style.display = 'none';
+        return;
+      }
+
+      fillForm(data);
+      spinner.style.display = 'none';
+      formSection.style.display = 'block';
+      setStep(2);
+      formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (e) {
+      showError('Не удалось связаться с сервером: ' + e.message);
+      uploadZone.style.display = 'block';
+      spinner.style.display = 'none';
+    }
+  }
+
+  function fillForm(d) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+
+    set('invoice_number', d.invoice_number);
+    set('invoice_date', d.invoice_date);
+    set('seller_name', d.seller_name);
+    set('seller_inn', d.seller_inn);
+    set('seller_kpp', d.seller_kpp);
+    set('seller_address', d.seller_address);
+    set('buyer_name', d.buyer_name);
+    set('buyer_inn', d.buyer_inn);
+    set('buyer_kpp', d.buyer_kpp);
+    set('buyer_address', d.buyer_address);
+    set('currency_code', d.currency_code || '643');
+    set('shipment_doc_name', d.shipment_doc_name);
+    set('shipment_doc_number', d.shipment_doc_number);
+    set('shipment_doc_date', d.shipment_doc_date);
+    set('signer_name', d.signer_name);
+    set('total_no_vat', d.total_no_vat);
+    set('total_vat', d.total_vat);
+    set('total_with_vat', d.total_with_vat);
+
+    if (d.items && d.items.length > 0) {
+      const item = d.items[0];
+      set('item_num', item.num);
+      set('item_name', item.name);
+      set('item_description', item.description);
+      set('item_unit_code', item.unit_code);
+      set('item_unit_name', item.unit_name);
+      set('item_qty', item.qty);
+      set('item_price', item.price);
+      set('item_amount_no_vat', item.amount_no_vat);
+      set('item_vat_rate', item.vat_rate);
+      set('item_vat_amount', item.vat_amount);
+      set('item_amount_with_vat', item.amount_with_vat);
+    }
+  }
+
+  // Form submit → download XML
+  document.getElementById('form-section').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Генерирую…';
+
+    try {
+      const res = await fetch('/generate', { method: 'POST', body: new FormData(this) });
+      if (!res.ok) {
+        const err = await res.json();
+        alert('Ошибка: ' + (err.detail || 'неизвестная ошибка'));
+        return;
+      }
+      // Trigger download
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const fnMatch = cd.match(/filename="?([^"]+)"?/);
+      const filename = fnMatch ? fnMatch[1] : 'upd.xml';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('success-box').style.display = 'block';
+      setStep(3);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/>
+        <line x1="10" y1="12" x2="14" y2="12"/></svg> Создать XML и скачать`;
+    }
+  });
+
+  function showError(msg) {
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.style.display = 'block';
+  }
+
+  function resetForm() {
+    formSection.style.display = 'none';
+    uploadZone.style.display = 'block';
+    fileInput.value = '';
+    document.getElementById('success-box').style.display = 'none';
+    errorBox.style.display = 'none';
+    setStep(1);
+  }
+
+  function setStep(n) {
+    ['step1','step2','step3'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = 'step';
+      if (i + 1 < n) el.classList.add('done');
+      else if (i + 1 === n) el.classList.add('active');
+    });
+  }
+</script>
+</body>
+</html>
