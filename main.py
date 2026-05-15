@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
-from parser import extract_invoice_data
+from pdf_parser import extract_invoice_data
 from xml_generator import generate_xml
 
 app = FastAPI(title="PDF → XML для Диадок")
