@@ -1,5 +1,4 @@
 import re
-import pdfplumber
 from typing import Optional
 
 MONTHS_RU = {
@@ -35,6 +34,7 @@ def _first(pattern: str, text: str, group: int = 1) -> str:
 
 
 def extract_invoice_data(pdf_path: str) -> dict:
+    import pdfplumber  # ленивый импорт — не тормозит старт сервера
     pages = []
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
