@@ -385,10 +385,68 @@
           <input type="text" name="buyer_okpo" id="buyer_okpo">
         </div>
         <div class="field" style="grid-column:span 3">
-          <label>Адрес</label>
+          <label>Адрес (строкой — для АдрИнф)</label>
           <input type="text" name="buyer_address" id="buyer_address" required>
         </div>
       </div>
+
+      <!-- АдрГАР — структурированный адрес покупателя -->
+      <div class="section-label">Структурированный адрес покупателя (АдрГАР) — если заполнен, приоритет над строкой выше</div>
+      <div class="grid cols3">
+        <div class="field">
+          <label>Индекс</label>
+          <input type="text" name="buyer_zip" id="buyer_zip" placeholder="620027">
+        </div>
+        <div class="field">
+          <label>Код региона</label>
+          <input type="text" name="buyer_region_code" id="buyer_region_code" placeholder="66">
+        </div>
+        <div class="field">
+          <label>Наименование региона</label>
+          <input type="text" name="buyer_region_name" id="buyer_region_name" placeholder="Свердловская область">
+        </div>
+        <div class="field">
+          <label>Муниципальный район</label>
+          <input type="text" name="buyer_munitsip_naim" id="buyer_munitsip_naim" placeholder="Город Екатеринбург">
+        </div>
+        <div class="field">
+          <label>Населённый пункт</label>
+          <input type="text" name="buyer_nasel_naim" id="buyer_nasel_naim" placeholder="Екатеринбург">
+        </div>
+        <div class="field">
+          <label>Тип нас. пункта</label>
+          <input type="text" name="buyer_nasel_vid" id="buyer_nasel_vid" value="г.">
+        </div>
+        <div class="field">
+          <label>Улица/переулок</label>
+          <input type="text" name="buyer_street_naim" id="buyer_street_naim" placeholder="Красный">
+        </div>
+        <div class="field">
+          <label>Тип улицы</label>
+          <input type="text" name="buyer_street_tip" id="buyer_street_tip" value="пер.">
+        </div>
+        <div class="field">
+          <label>Дом №</label>
+          <input type="text" name="buyer_house_num" id="buyer_house_num" placeholder="19">
+        </div>
+        <div class="field">
+          <label>Тип дома</label>
+          <input type="text" name="buyer_house_tip" id="buyer_house_tip" value="д.">
+        </div>
+        <div class="field">
+          <label>Помещение №</label>
+          <input type="text" name="buyer_room_num" id="buyer_room_num" placeholder="22">
+        </div>
+        <div class="field">
+          <label>Тип помещения</label>
+          <input type="text" name="buyer_room_tip" id="buyer_room_tip" value="кв.">
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label>ФИАС/ГАР идентификатор (необязательно)</label>
+          <input type="text" name="buyer_fias_id" id="buyer_fias_id" placeholder="b6f28f07-e457-410f-974e-e67f79946523">
+        </div>
+      </div>
+      <input type="hidden" name="buyer_munitsip_vid_kod" value="2">
 
       <!-- Документ об отгрузке -->
       <div class="section-label">Документ об отгрузке</div>
@@ -467,6 +525,8 @@
               <th>Ставка НДС</th>
               <th>Сумма НДС</th>
               <th>Итого с НДС</th>
+              <th>Код товара</th>
+              <th>Пр. (3=услуга)</th>
             </tr>
           </thead>
           <tbody>
@@ -482,6 +542,8 @@
               <td><input type="text" name="item_vat_rate" id="item_vat_rate" style="width:70px" required></td>
               <td><input type="text" name="item_vat_amount" id="item_vat_amount" style="width:100px" required></td>
               <td><input type="text" name="item_amount_with_vat" id="item_amount_with_vat" style="width:110px" required></td>
+              <td><input type="text" name="item_kod_tov" id="item_kod_tov" style="width:100px"></td>
+              <td><input type="text" name="item_pr_tov_rab" id="item_pr_tov_rab" style="width:60px" value="3"></td>
             </tr>
           </tbody>
         </table>

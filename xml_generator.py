@@ -9,9 +9,15 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
 
 
+# ── Вспомогательные функции ───────────────────────────────────────────────
+
+def _new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
 def _file_id(seller_inn, seller_kpp, buyer_inn, buyer_kpp):
     now = datetime.datetime.now().strftime('%Y%m%d')
-    uid = str(uuid.uuid4())
+    uid = _new_uuid()
     return f"ON_NSCHFDOPPR_{buyer_inn}_{buyer_kpp}_{seller_inn}_{seller_kpp}_{now}_{uid}_0_0_0_0_0_00"
 
 
@@ -25,15 +31,83 @@ def _parse_fio(full_name: str) -> tuple:
     )
 
 
+def _vat_number(vat_rate: str) -> str:
+    """'22%' → '22'"""
+    return re.sub(r'[^0-9]', '', vat_rate)
+
+
+def _sum_qty(items: list) -> str:
+    try:
+        total = sum(float(i.get('qty', 0)) for i in items)
+        return str(int(total)) if total == int(total) else str(total)
+    except Exception:
+        return '1'
+
+
+# ── Адрес через АдрГАР (структурированный) ───────────────────────────────
+
+def _build_adr_gar(parent: Element, addr: dict):
+    """
+    addr keys (все опциональны):
+        fias_id, zip, region_code, region_name,
+        munitsip_vid_kod, munitsip_naim,
+        nasel_vid, nasel_naim,
+        street_tip, street_naim,
+        house_tip, house_num,
+        room_tip, room_num
+    """
+    gar = SubElement(parent, 'АдрГАР')
+    if addr.get('fias_id'):
+        gar.set('ИдНом', addr['fias_id'])
+    if addr.get('zip'):
+        gar.set('Индекс', addr['zip'])
+
+    if addr.get('region_code'):
+        reg = SubElement(gar, 'Регион')
+        reg.text = addr['region_code']
+
+    if addr.get('region_name'):
+        naim = SubElement(gar, 'НаимРегион')
+        naim.text = addr['region_name']
+
+    if addr.get('munitsip_naim'):
+        mr = SubElement(gar, 'МуниципРайон')
+        mr.set('ВидКод', addr.get('munitsip_vid_kod', '2'))
+        mr.set('Наим', addr['munitsip_naim'])
+
+    if addr.get('nasel_naim'):
+        np_ = SubElement(gar, 'НаселенПункт')
+        np_.set('Вид', addr.get('nasel_vid', 'г.'))
+        np_.set('Наим', addr['nasel_naim'])
+
+    if addr.get('street_naim'):
+        ul = SubElement(gar, 'ЭлУлДорСети')
+        ul.set('Тип', addr.get('street_tip', 'ул.'))
+        ul.set('Наим', addr['street_naim'])
+
+    if addr.get('house_num'):
+        zd = SubElement(gar, 'Здание')
+        zd.set('Тип', addr.get('house_tip', 'д.'))
+        zd.set('Номер', addr['house_num'])
+
+    if addr.get('room_num'):
+        rm = SubElement(gar, 'ПомещКвартиры')
+        rm.set('Тип', addr.get('room_tip', 'помещ.'))
+        rm.set('Номер', addr['room_num'])
+
+
+def _has_gar(addr: dict) -> bool:
+    return bool(addr and (addr.get('region_code') or addr.get('nasel_naim') or addr.get('zip')))
+
+
+# ── Основная функция генерации ────────────────────────────────────────────
+
 def generate_xml(data: dict) -> bytes:
-    """
-    Возвращает байты в кодировке windows-1251.
-    """
     now = datetime.datetime.now()
-    seller_inn  = data.get('seller_inn', '')
-    seller_kpp  = data.get('seller_kpp', '')
-    buyer_inn   = data.get('buyer_inn', '')
-    buyer_kpp   = data.get('buyer_kpp', '')
+    seller_inn = data.get('seller_inn', '')
+    seller_kpp = data.get('seller_kpp', '')
+    buyer_inn  = data.get('buyer_inn', '')
+    buyer_kpp  = data.get('buyer_kpp', '')
 
     # ── Корень ────────────────────────────────────────────────────────────
     root = Element('Файл')
@@ -71,25 +145,27 @@ def generate_xml(data: dict) -> bytes:
 
     addr_prod = SubElement(sv_prod, 'Адрес')
     adr1 = SubElement(addr_prod, 'АдрИнф')
-    adr1.set('КодСтр',   '643')
+    adr1.set('КодСтр',    '643')
     adr1.set('НаимСтран', 'РОССИЯ')
     adr1.set('АдрТекст',  data.get('seller_address', ''))
 
-    # Банковские реквизиты продавца (если заполнены)
+    # Банковские реквизиты продавца
     if data.get('seller_bank_account'):
         bank_rekv = SubElement(sv_prod, 'БанкРекв')
-        bank_rekv.set('НомерСчета', data.get('seller_bank_account', ''))
+        bank_rekv.set('НомерСчета', data['seller_bank_account'])
         sv_bank = SubElement(bank_rekv, 'СвБанк')
-        sv_bank.set('НаимБанк', data.get('seller_bank_name', ''))
-        sv_bank.set('БИК',      data.get('seller_bank_bik', ''))
+        if data.get('seller_bank_name'):
+            sv_bank.set('НаимБанк', data['seller_bank_name'])
+        if data.get('seller_bank_bik'):
+            sv_bank.set('БИК', data['seller_bank_bik'])
         if data.get('seller_bank_korr'):
-            sv_bank.set('КорСчет', data.get('seller_bank_korr', ''))
+            sv_bank.set('КорСчет', data['seller_bank_korr'])
 
     # Документ-основание отгрузки
     if data.get('shipment_doc_number'):
         dok = SubElement(sv_sf, 'ДокПодтвОтгрНом')
         dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Универсальный передаточный документ'))
-        dok.set('РеквНомерДок', data.get('shipment_doc_number', ''))
+        dok.set('РеквНомерДок', data['shipment_doc_number'])
         dok.set('РеквДатаДок',  data.get('shipment_doc_date', data.get('invoice_date', '')))
 
     # Покупатель
@@ -98,9 +174,7 @@ def generate_xml(data: dict) -> bytes:
         sv_pokup.set('ОКПО', data['buyer_okpo'])
 
     id_pokup = SubElement(sv_pokup, 'ИдСв')
-
     if len(buyer_inn) == 12 and not buyer_kpp:
-        # ИП
         sv_ip = SubElement(id_pokup, 'СвИП')
         sv_ip.set('ИННФЛ', buyer_inn)
         fam, ima, otch = _parse_fio(data.get('buyer_name', ''))
@@ -116,11 +190,16 @@ def generate_xml(data: dict) -> bytes:
         if buyer_kpp:
             sv_yul2.set('КПП', buyer_kpp)
 
+    # Адрес покупателя: АдрГАР (если заполнен) или АдрИнф
     addr_pokup = SubElement(sv_pokup, 'Адрес')
-    adr2 = SubElement(addr_pokup, 'АдрИнф')
-    adr2.set('КодСтр',    '643')
-    adr2.set('НаимСтран', 'РОССИЯ')
-    adr2.set('АдрТекст',  data.get('buyer_address', ''))
+    buyer_gar = data.get('buyer_gar', {})
+    if _has_gar(buyer_gar):
+        _build_adr_gar(addr_pokup, buyer_gar)
+    else:
+        adr2 = SubElement(addr_pokup, 'АдрИнф')
+        adr2.set('КодСтр',    '643')
+        adr2.set('НаимСтран', 'РОССИЯ')
+        adr2.set('АдрТекст',  data.get('buyer_address', ''))
 
     # Валюта
     den_izm = SubElement(sv_sf, 'ДенИзм')
@@ -128,10 +207,30 @@ def generate_xml(data: dict) -> bytes:
     den_izm.set('НаимОКВ', 'Российский рубль')
     den_izm.set('КурсВал', '1.00')
 
+    # ── ИнфПолФХЖ1 ────────────────────────────────────────────────────────
+    inf1 = SubElement(sv_sf, 'ИнфПолФХЖ1')
+    doc_basis_uid = data.get('doc_basis_uid') or _new_uuid()
+
+    def _txt(parent, identif, znachen):
+        el = SubElement(parent, 'ТекстИнф')
+        el.set('Идентиф', identif)
+        el.set('Значен',  znachen)
+
+    _txt(inf1, 'ИдентификаторДокументаОснования', doc_basis_uid)
+    _txt(inf1, 'ВидСчетаФактуры',                 'Реализация')
+    _txt(inf1, 'ТолькоУслуги',                     'true')
+
+    sdoc_num  = data.get('shipment_doc_number', '')
+    sdoc_date = data.get('shipment_doc_date', data.get('invoice_date', ''))
+    if sdoc_num:
+        _txt(inf1, 'ДокументОбОтгрузке', f'№ п/п 1 № {sdoc_num} от {sdoc_date} г.')
+
     # ── ТаблСчФакт ────────────────────────────────────────────────────────
     tabl = SubElement(doc, 'ТаблСчФакт')
 
     for item in data.get('items', []):
+        item_uid = _new_uuid() + '##'
+
         sv_tov = SubElement(tabl, 'СведТов')
         sv_tov.set('НомСтр',      str(item.get('num', '1')))
         sv_tov.set('НаимТов',     item.get('name', ''))
@@ -143,6 +242,12 @@ def generate_xml(data: dict) -> bytes:
         sv_tov.set('НалСт',       item.get('vat_rate', ''))
         sv_tov.set('СтТовУчНал',  item.get('amount_with_vat', ''))
 
+        # ДопСведТов
+        dop = SubElement(sv_tov, 'ДопСведТов')
+        dop.set('ПрТовРаб', item.get('pr_tov_rab', '3'))  # 3 = услуга
+        if item.get('kod_tov'):
+            dop.set('КодТов', item['kod_tov'])
+
         # Акциз
         akciz = SubElement(sv_tov, 'Акциз')
         bez = SubElement(akciz, 'БезАкциз')
@@ -153,11 +258,30 @@ def generate_xml(data: dict) -> bytes:
         sum_nal_inner = SubElement(sum_nal_outer, 'СумНал')
         sum_nal_inner.text = item.get('vat_amount', '')
 
+        # ИнфПолФХЖ2 — метаданные для 1С / Диадок
+        def _inf2(identif, znachen):
+            el = SubElement(sv_tov, 'ИнфПолФХЖ2')
+            el.set('Идентиф', identif)
+            el.set('Значен',  znachen)
+
+        _inf2('Для1С_Идентификатор',       item_uid)
+        _inf2('Для1С_Наименование',         item.get('name', ''))
+        if item.get('unit_name'):
+            _inf2('Для1С_ЕдиницаИзмерения',    item['unit_name'] + '.')
+        if item.get('unit_code'):
+            _inf2('Для1С_ЕдиницаИзмеренияКод', item['unit_code'])
+        if item.get('kod_tov'):
+            _inf2('Для1С_Артикул', item['kod_tov'])
+        vat_num = _vat_number(item.get('vat_rate', ''))
+        if vat_num:
+            _inf2('Для1С_СтавкаНДС', vat_num)
+        _inf2('ИД', item_uid)
+
     # ВсегоОпл
     vsego = SubElement(tabl, 'ВсегоОпл')
-    vsego.set('СтТовБезНДСВсего',  data.get('total_no_vat', ''))
-    vsego.set('СтТовУчНалВсего',   data.get('total_with_vat', ''))
-    vsego.set('КолНеттоВс',        _sum_qty(data.get('items', [])))
+    vsego.set('СтТовБезНДСВсего', data.get('total_no_vat', ''))
+    vsego.set('СтТовУчНалВсего',  data.get('total_with_vat', ''))
+    vsego.set('КолНеттоВс',       _sum_qty(data.get('items', [])))
     sum_nal_vsego = SubElement(vsego, 'СумНалВсего')
     sn = SubElement(sum_nal_vsego, 'СумНал')
     sn.text = data.get('total_vat', '')
@@ -165,18 +289,19 @@ def generate_xml(data: dict) -> bytes:
     # ── СвПродПер ────────────────────────────────────────────────────────
     sv_prod_per = SubElement(doc, 'СвПродПер')
     sv_per = SubElement(sv_prod_per, 'СвПер')
-    sv_per.set('СодОпер',  data.get('transfer_content', 'Услуги оказаны в полном объеме'))
-    sv_per.set('ВидОпер',  data.get('transfer_type', 'Продажа'))
-    sv_per.set('ДатаПер',  data.get('invoice_date', ''))
+    sv_per.set('СодОпер', data.get('transfer_content', 'Услуги оказаны в полном объеме'))
+    sv_per.set('ВидОпер', data.get('transfer_type',   'Продажа'))
+    sv_per.set('ДатаПер', data.get('invoice_date', ''))
 
-    # Основание передачи (договор)
     if data.get('basis_doc_number'):
         osn = SubElement(sv_per, 'ОснПер')
-        osn.set('РеквНаимДок',  data.get('basis_doc_name', ''))
-        osn.set('РеквНомерДок', data.get('basis_doc_number', ''))
-        osn.set('РеквДатаДок',  data.get('basis_doc_date', ''))
+        basis_label = data.get('basis_doc_name', '')
+        basis_num   = data.get('basis_doc_number', '')
+        basis_date  = data.get('basis_doc_date', '')
+        osn.set('РеквНаимДок',  f'{basis_label} от {basis_date}' if basis_date else basis_label)
+        osn.set('РеквНомерДок', basis_num)
+        osn.set('РеквДатаДок',  basis_date)
 
-    # Подписант со стороны продавца
     signer_name = data.get('signer_name', '')
     if signer_name:
         sv_lic = SubElement(sv_per, 'СвЛицПер')
@@ -191,7 +316,7 @@ def generate_xml(data: dict) -> bytes:
 
     # ── Подписант ─────────────────────────────────────────────────────────
     podpisant = SubElement(doc, 'Подписант')
-    podpisant.set('ТипПодпис', '2')
+    podpisant.set('ТипПодпис',      '2')
     podpisant.set('СпосПодтПолном', '1')
     fio_podp = SubElement(podpisant, 'ФИО')
     fam, ima, otch = _parse_fio(signer_name) if signer_name else ('-', '-', '')
@@ -204,14 +329,8 @@ def generate_xml(data: dict) -> bytes:
     raw = tostring(root, encoding='unicode')
     dom = minidom.parseString(raw)
     pretty = dom.toprettyxml(indent='\t', encoding=None)
-    # Убираем лишнюю декларацию minidom
     lines = pretty.split('\n')
     if lines[0].startswith('<?xml'):
         lines = lines[1:]
     xml_str = '<?xml version="1.0" encoding="windows-1251"?>\n' + '\n'.join(lines)
     return xml_str.encode('windows-1251')
-
-
-def _sum_qty(items: list) -> str:
-    total = sum(float(i.get('qty', 0)) for i in items)
-    return str(int(total)) if total == int(total) else str(total)
