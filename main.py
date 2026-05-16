@@ -74,6 +74,8 @@ async def generate(
     # Передача
     transfer_content: str = Form('Услуги оказаны в полном объеме'),
     transfer_type: str = Form('Продажа'),
+    # Составитель документа (НаимЭконСубСост)
+    naim_ekon_sub_sost: str = Form(''),
     # Подписант
     signer_name: str = Form(''),
     signer_position: str = Form('Генеральный директор'),
@@ -154,6 +156,7 @@ async def generate(
         'basis_doc_date': basis_doc_date,
         'transfer_content': transfer_content,
         'transfer_type': transfer_type,
+        'naim_ekon_sub_sost': naim_ekon_sub_sost,
         'signer_name': signer_name,
         'signer_position': signer_position,
         'currency_code': currency_code,

@@ -125,7 +125,7 @@ def generate_xml(data: dict) -> bytes:
     doc.set('НаимДокОпр',     'Счет-фактура и передаточный документ (акт)')
     doc.set('ДатаИнфПр',      now.strftime('%d.%m.%Y'))
     doc.set('ВремИнфПр',      now.strftime('%H.%M.%S'))
-    doc.set('НаимЭконСубСост', f'{data.get("seller_name", "")}, ИНН/КПП {seller_inn}/{seller_kpp}')
+    doc.set('НаимЭконСубСост', data.get('naim_ekon_sub_sost', f'{data.get("seller_name", "")}, ИНН/КПП {seller_inn}/{seller_kpp}'))
 
     # ── СвСчФакт ──────────────────────────────────────────────────────────
     sv_sf = SubElement(doc, 'СвСчФакт')
