@@ -293,6 +293,8 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     # ── СвПродПер ────────────────────────────────────────────────────────
     sv_prod_per = SubElement(doc, 'СвПродПер')
     sv_per = SubElement(sv_prod_per, 'СвПер')
+    sv_per.set('НомерДок', data.get('invoice_number', ''))
+    sv_per.set('ДатаДок',  data.get('invoice_date', ''))
     sv_per.set('СодОпер', data.get('transfer_content', 'Услуги оказаны в полном объеме'))
     sv_per.set('ВидОпер', data.get('transfer_type',   'Продажа'))
     sv_per.set('ДатаПер', data.get('invoice_date', ''))
