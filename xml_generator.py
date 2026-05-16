@@ -165,13 +165,6 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
         if data.get('seller_bank_korr'):
             sv_bank.set('КорСчет', data['seller_bank_korr'])
 
-    # Документ-основание отгрузки
-    if data.get('shipment_doc_number'):
-        dok = SubElement(sv_sf, 'ДокПодтвОтгрНом')
-        dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Счет-фактура и передаточный документ'))
-        dok.set('РеквНомерДок', data['shipment_doc_number'])
-        dok.set('РеквДатаДок',  data.get('shipment_doc_date', data.get('invoice_date', '')))
-
     # Покупатель
     sv_pokup = SubElement(sv_sf, 'СвПокуп')
     if data.get('buyer_okpo'):
@@ -210,6 +203,13 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     den_izm.set('КодОКВ',  data.get('currency_code', '643'))
     den_izm.set('НаимОКВ', 'Российский рубль')
     den_izm.set('КурсВал', '1.00')
+
+    # Документ-основание отгрузки (должен идти после ДенИзм по схеме ФНС 5.03)
+    if data.get('shipment_doc_number'):
+        dok = SubElement(sv_sf, 'ДокПодтвОтгрНом')
+        dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Счет-фактура и передаточный документ'))
+        dok.set('РеквНомерДок', data['shipment_doc_number'])
+        dok.set('РеквДатаДок',  data.get('shipment_doc_date', data.get('invoice_date', '')))
 
     # ── ИнфПолФХЖ1 ────────────────────────────────────────────────────────
     inf1 = SubElement(sv_sf, 'ИнфПолФХЖ1')
