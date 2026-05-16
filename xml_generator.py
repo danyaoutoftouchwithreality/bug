@@ -121,11 +121,13 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     root.set('ВерсПрог',  'PDF2XML 1.0')
 
     # ── Документ ──────────────────────────────────────────────────────────
+    doc_name = 'Счет-фактура и передаточный документ (акт)'
+
     doc = SubElement(root, 'Документ')
     doc.set('КНД',            '1115131')
     doc.set('Функция',        'СЧФДОП')
-    doc.set('ПоФактХЖ',       'Счет-фактура и передаточный документ (акт)')
-    doc.set('НаимДокОпр',     'Счет-фактура и передаточный документ (акт)')
+    doc.set('ПоФактХЖ',       doc_name)
+    doc.set('НаимДокОпр',     doc_name)
     doc.set('ДатаИнфПр',      now.strftime('%d.%m.%Y'))
     doc.set('ВремИнфПр',      now.strftime('%H.%M.%S'))
     doc.set('НаимЭконСубСост', data.get('naim_ekon_sub_sost', f'{data.get("seller_name", "")}, ИНН/КПП {seller_inn}/{seller_kpp}'))
@@ -167,7 +169,7 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     # Документ-основание отгрузки (позиция: после СвПрод, до СвПокуп — по схеме ФНС 5.03)
     if data.get('shipment_doc_number'):
         dok = SubElement(sv_sf, 'ДокПодтвОтгрНом')
-        dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Счет-фактура и передаточный документ'))
+        dok.set('РеквНаимДок',  doc_name)
         dok.set('РеквНомерДок', data['shipment_doc_number'])
         dok.set('РеквДатаДок',  data.get('shipment_doc_date', data.get('invoice_date', '')))
 
