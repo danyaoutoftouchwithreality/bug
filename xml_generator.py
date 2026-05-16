@@ -232,8 +232,6 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     tabl = SubElement(doc, 'ТаблСчФакт')
 
     for item in data.get('items', []):
-        item_uid = _new_uuid()
-
         sv_tov = SubElement(tabl, 'СведТов')
         sv_tov.set('НомСтр',      str(item.get('num', '1')))
         sv_tov.set('НаимТов',     item.get('name', ''))
@@ -260,25 +258,6 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
         sum_nal_outer = SubElement(sv_tov, 'СумНал')
         sum_nal_inner = SubElement(sum_nal_outer, 'СумНал')
         sum_nal_inner.text = item.get('vat_amount', '')
-
-        # ИнфПолФХЖ2 — метаданные для 1С / Диадок
-        def _inf2(identif, znachen):
-            el = SubElement(sv_tov, 'ИнфПолФХЖ2')
-            el.set('Идентиф', identif)
-            el.set('Значен',  znachen)
-
-        _inf2('Для1С_Идентификатор',       item_uid)
-        _inf2('Для1С_Наименование',         item.get('name', ''))
-        if item.get('unit_name'):
-            _inf2('Для1С_ЕдиницаИзмерения',    item['unit_name'] + '.')
-        if item.get('unit_code'):
-            _inf2('Для1С_ЕдиницаИзмеренияКод', item['unit_code'])
-        if item.get('kod_tov'):
-            _inf2('Для1С_Артикул', item['kod_tov'])
-        vat_num = _vat_number(item.get('vat_rate', ''))
-        if vat_num:
-            _inf2('Для1С_СтавкаНДС', vat_num)
-        _inf2('ИД', item_uid)
 
     # ВсегоОпл
     vsego = SubElement(tabl, 'ВсегоОпл')
