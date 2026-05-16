@@ -18,7 +18,9 @@ def _new_uuid() -> str:
 def _file_id(seller_inn, seller_kpp, buyer_inn, buyer_kpp):
     now = datetime.datetime.now().strftime('%Y%m%d')
     uid = _new_uuid()
-    return f"ON_NSCHFDOPPR_{buyer_inn}_{buyer_kpp}_{seller_inn}_{seller_kpp}_{now}_{uid}_0_0_0_0_0_00"
+    buyer_part = f"{buyer_inn}_{buyer_kpp}" if buyer_kpp else buyer_inn
+    seller_part = f"{seller_inn}_{seller_kpp}" if seller_kpp else seller_inn
+    return f"ON_NSCHFDOPPR_{buyer_part}_{seller_part}_{now}_{uid}_0_0_0_0_0_00"
 
 
 def _parse_fio(full_name: str) -> tuple:
@@ -102,7 +104,8 @@ def _has_gar(addr: dict) -> bool:
 
 # ── Основная функция генерации ────────────────────────────────────────────
 
-def generate_xml(data: dict) -> bytes:
+def generate_xml(data: dict) -> tuple[bytes, str]:
+    """Returns (xml_bytes, file_id)."""
     now = datetime.datetime.now()
     seller_inn = data.get('seller_inn', '')
     seller_kpp = data.get('seller_kpp', '')
@@ -113,7 +116,8 @@ def generate_xml(data: dict) -> bytes:
     root = Element('Файл')
     root.set('xmlns:xs',  'http://www.w3.org/2001/XMLSchema')
     root.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
-    root.set('ИдФайл',    _file_id(seller_inn, seller_kpp, buyer_inn, buyer_kpp))
+    file_id = _file_id(seller_inn, seller_kpp, buyer_inn, buyer_kpp)
+    root.set('ИдФайл',    file_id)
     root.set('ВерсФорм',  '5.03')
     root.set('ВерсПрог',  'PDF2XML 1.0')
 
@@ -333,4 +337,4 @@ def generate_xml(data: dict) -> bytes:
     if lines[0].startswith('<?xml'):
         lines = lines[1:]
     xml_str = '<?xml version="1.0" encoding="windows-1251"?>\n' + '\n'.join(lines)
-    return xml_str.encode('windows-1251')
+    return xml_str.encode('windows-1251'), file_id

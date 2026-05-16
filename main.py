@@ -181,11 +181,11 @@ async def generate(
     }
 
     try:
-        xml_bytes = generate_xml(data)
+        xml_bytes, file_id = generate_xml(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка генерации XML: {e}")
 
-    filename = f"ON_NSCHFDOPPR_{buyer_inn}_{seller_inn}_{invoice_date.replace('.', '')}.xml"
+    filename = f"{file_id}.xml"
     return StreamingResponse(
         io.BytesIO(xml_bytes),
         media_type='application/xml',
