@@ -132,7 +132,7 @@ def extract_invoice_data(pdf_path: str) -> dict:
     # ── Документ об отгрузке ──────────────────────────────────────────────
     m = re.search(r'АКТ ОКАЗАННЫХ УСЛУГ\s*№\s*(\S+)\s+от\s+(.+?)(?:\s*\(|$)', sf)
     if m:
-        data['shipment_doc_name'] = 'АКТ ОКАЗАННЫХ УСЛУГ'
+        data['shipment_doc_name'] = 'Универсальный передаточный документ'
         data['shipment_doc_number'] = m.group(1).strip()
         data['shipment_doc_date'] = _parse_date(m.group(2))
     else:
