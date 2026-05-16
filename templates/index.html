@@ -598,23 +598,21 @@
         </svg>
         Файлы сформированы!
       </h3>
-      <p style="margin-bottom:16px">Скачайте XML для Диадок и PDF (страницы 1–2 исходного файла).</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a id="download-xml-btn" href="#" class="btn btn-primary" download>
+      <p style="margin-bottom:16px">Скачайте XML для Диадок и PDF (страницы 1 и 4 исходного файла).</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <a id="download-all-btn" href="#" class="btn btn-primary" download>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Скачать XML
+          Скачать оба файла (ZIP)
         </a>
-        <a id="download-pdf-btn" href="#" class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" download>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Скачать PDF (стр. 1–2)
+        <a id="download-xml-btn" href="#" class="btn btn-outline" download>
+          XML
+        </a>
+        <a id="download-pdf-btn" href="#" class="btn btn-outline" download>
+          PDF
         </a>
       </div>
     </div>
@@ -768,12 +766,17 @@
       xmlBtn.download = result.xml_name;
 
       const pdfBtn = document.getElementById('download-pdf-btn');
+      const allBtn = document.getElementById('download-all-btn');
       if (result.has_pdf) {
         pdfBtn.href = `/download/pdf/${result.result_id}`;
         pdfBtn.download = result.pdf_name;
         pdfBtn.style.display = '';
+        allBtn.href = `/download/all/${result.result_id}`;
+        allBtn.download = '';
+        allBtn.style.display = '';
       } else {
         pdfBtn.style.display = 'none';
+        allBtn.style.display = 'none';
       }
 
       document.getElementById('success-box').style.display = 'block';

@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import quote
@@ -290,4 +291,26 @@ async def download_pdf(result_id: str):
         io.BytesIO(r["pdf"]),
         media_type="application/pdf",
         headers={"Content-Disposition": _content_disposition(r["pdf_name"])},
+    )
+
+
+@app.get("/download/all/{result_id}")
+async def download_all(result_id: str):
+    r = _results.get(result_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Результат не найден")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(r["xml_name"], r["xml"])
+        if r["pdf"] and r["pdf_name"]:
+            zf.writestr(r["pdf_name"], r["pdf"])
+    buf.seek(0)
+
+    stem = r["xml_name"].rsplit(".", 1)[0]
+    zip_name = f"{stem}.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": _content_disposition(zip_name)},
     )
