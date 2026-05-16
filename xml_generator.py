@@ -232,7 +232,7 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
     tabl = SubElement(doc, 'ТаблСчФакт')
 
     for item in data.get('items', []):
-        item_uid = _new_uuid() + '##'
+        item_uid = _new_uuid()
 
         sv_tov = SubElement(tabl, 'СведТов')
         sv_tov.set('НомСтр',      str(item.get('num', '1')))
