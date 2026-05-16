@@ -239,8 +239,9 @@ async def generate(
             raw = await pdf_file.read()
             reader = PdfReader(io.BytesIO(raw))
             writer = PdfWriter()
-            for i in range(min(2, len(reader.pages))):
-                writer.add_page(reader.pages[i])
+            for i in [0, 3]:
+                if i < len(reader.pages):
+                    writer.add_page(reader.pages[i])
             buf = io.BytesIO()
             writer.write(buf)
             pdf_bytes = buf.getvalue()
