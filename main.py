@@ -1,20 +1,64 @@
 import io
 import os
+import re
 import tempfile
+import uuid
 from pathlib import Path
+from typing import Dict, Optional
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
+from pypdf import PdfReader, PdfWriter
 
 from pdf_parser import extract_invoice_data
 from xml_generator import generate_xml
 
+_LEGAL_FORMS = [
+    ("Публичное акционерное общество", "ПАО"),
+    ("Закрытое акционерное общество", "ЗАО"),
+    ("Открытое акционерное общество", "ОАО"),
+    ("Общество с ограниченной ответственностью", "ООО"),
+    ("Акционерное общество", "АО"),
+    ("Индивидуальный предприниматель", "ИП"),
+]
+_FORBIDDEN = re.compile(r'[/\\:*?"<>|]')
+
+
+def _make_pdf_filename(buyer_name: str, invoice_number: str, original: str) -> str:
+    company = _FORBIDDEN.sub('', buyer_name or '').strip()
+    for full, abbr in _LEGAL_FORMS:
+        company = re.sub(re.escape(full), abbr, company, flags=re.IGNORECASE)
+    company = re.sub(r'\s+', ' ', company).strip()
+
+    number = _FORBIDDEN.sub('', invoice_number or '').strip()
+    number = re.sub(r'\s+', ' ', number).strip()
+
+    if company and number:
+        return f"{company}_{number}.pdf"
+    if company:
+        return f"{company}.pdf"
+
+    base = original if original else "document"
+    if base.lower().endswith('.pdf'):
+        base = base[:-4]
+    base = re.sub(r'\s+', ' ', _FORBIDDEN.sub('', base)).strip()
+    return f"{base} (1).pdf"
+
 app = FastAPI(title="PDF → XML для Диадок")
+
+
+def _content_disposition(filename: str) -> str:
+    ascii_name = filename.encode('ascii', errors='replace').decode('ascii')
+    encoded = quote(filename, safe='')
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{encoded}"
 
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+_results: Dict[str, dict] = {}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -44,6 +88,7 @@ async def parse_pdf(file: UploadFile = File(...)):
 
 @app.post("/generate")
 async def generate(
+    pdf_file: Optional[UploadFile] = File(None),
     # Счёт-фактура
     invoice_number: str = Form(...),
     invoice_date: str = Form(...),
@@ -185,9 +230,63 @@ async def generate(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка генерации XML: {e}")
 
-    filename = f"{file_id}.xml"
+    xml_name = f"{file_id}.xml"
+
+    pdf_bytes = None
+    pdf_name = None
+    if pdf_file and pdf_file.filename:
+        try:
+            raw = await pdf_file.read()
+            reader = PdfReader(io.BytesIO(raw))
+            writer = PdfWriter()
+            for i in range(min(2, len(reader.pages))):
+                writer.add_page(reader.pages[i])
+            buf = io.BytesIO()
+            writer.write(buf)
+            pdf_bytes = buf.getvalue()
+            pdf_name = _make_pdf_filename(buyer_name, invoice_number, pdf_file.filename)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Ошибка обработки PDF: {e}")
+
+    result_id = str(uuid.uuid4())
+
+    if len(_results) > 200:
+        _results.clear()
+
+    _results[result_id] = {
+        "xml": xml_bytes,
+        "xml_name": xml_name,
+        "pdf": pdf_bytes,
+        "pdf_name": pdf_name or "",
+    }
+
+    return JSONResponse({
+        "result_id": result_id,
+        "xml_name": xml_name,
+        "pdf_name": pdf_name,
+        "has_pdf": pdf_bytes is not None,
+    })
+
+
+@app.get("/download/xml/{result_id}")
+async def download_xml(result_id: str):
+    r = _results.get(result_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Результат не найден")
     return StreamingResponse(
-        io.BytesIO(xml_bytes),
-        media_type='application/xml',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+        io.BytesIO(r["xml"]),
+        media_type="application/xml",
+        headers={"Content-Disposition": _content_disposition(r["xml_name"])},
+    )
+
+
+@app.get("/download/pdf/{result_id}")
+async def download_pdf(result_id: str):
+    r = _results.get(result_id)
+    if not r or not r["pdf"]:
+        raise HTTPException(status_code=404, detail="PDF не найден")
+    return StreamingResponse(
+        io.BytesIO(r["pdf"]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": _content_disposition(r["pdf_name"])},
     )
