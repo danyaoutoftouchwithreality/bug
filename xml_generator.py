@@ -164,7 +164,7 @@ def generate_xml(data: dict) -> bytes:
     # Документ-основание отгрузки
     if data.get('shipment_doc_number'):
         dok = SubElement(sv_sf, 'ДокПодтвОтгрНом')
-        dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Универсальный передаточный документ'))
+        dok.set('РеквНаимДок',  data.get('shipment_doc_name', 'Счет-фактура и передаточный документ'))
         dok.set('РеквНомерДок', data['shipment_doc_number'])
         dok.set('РеквДатаДок',  data.get('shipment_doc_date', data.get('invoice_date', '')))
 
