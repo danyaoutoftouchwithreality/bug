@@ -40,9 +40,14 @@ def extract_invoice_data(pdf_path: str) -> dict:
         for page in pdf.pages:
             pages.append(page.extract_text() or '')
 
-    # Счёт-фактура is on page 2 (index 1); act on page 3 (index 2)
-    sf = pages[1] if len(pages) > 1 else pages[0]
-    act = pages[2] if len(pages) > 2 else ''
+    # Ищем страницу со СЧЕТ-ФАКТУРОЙ по ключевому слову, а не по фиксированному индексу
+    sf_idx = next(
+        (i for i, p in enumerate(pages) if re.search(r'СЧЕТ-ФАКТУРА', p, re.IGNORECASE)),
+        1 if len(pages) > 1 else 0
+    )
+    sf = pages[sf_idx]
+    # АКТ — следующая страница после счёт-фактуры
+    act = pages[sf_idx + 1] if sf_idx + 1 < len(pages) else ''
 
     data = {}
 

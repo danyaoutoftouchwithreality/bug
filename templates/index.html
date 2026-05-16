@@ -669,6 +669,14 @@
 
     set('invoice_number', d.invoice_number);
     set('invoice_date', d.invoice_date);
+
+    // Предупреждаем если номер или дата не распознались
+    if (!d.invoice_number || !d.invoice_date) {
+      const warn = document.createElement('div');
+      warn.style.cssText = 'background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:12px 16px;margin-bottom:16px;color:#e65100;font-size:.9rem;';
+      warn.innerHTML = '⚠ <b>Номер и/или дата счёт-фактуры не распознались из PDF</b> — заполните поля вручную в разделе «Счёт-фактура».';
+      document.getElementById('form-section').prepend(warn);
+    }
     set('seller_name', d.seller_name);
     set('seller_inn', d.seller_inn);
     set('seller_kpp', d.seller_kpp);
@@ -708,6 +716,15 @@
   // Form submit → download XML
   document.getElementById('form-section').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    // Проверяем обязательные поля (required не работает при AJAX)
+    const num = document.getElementById('invoice_number').value.trim();
+    const dat = document.getElementById('invoice_date').value.trim();
+    if (!num || !dat) {
+      alert('⚠ Не заполнен номер или дата счёт-фактуры.\nПроверьте раздел «Счёт-фактура» и заполните вручную.');
+      return;
+    }
+
     const btn = document.getElementById('generate-btn');
     btn.disabled = true;
     btn.textContent = 'Генерирую…';
