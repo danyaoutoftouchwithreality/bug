@@ -144,6 +144,13 @@ def extract_invoice_data(pdf_path: str) -> dict:
     m = re.search(r'контракту\s+(\S+)', sf)
     data['contract_number'] = m.group(1).strip() if m else ''
 
+    # Дата договора — ищем на странице акта: "Заключенным 01 октября 2019 между"
+    m = re.search(r'[Зз]аключен\w*\s+(\d{1,2}\s+\w+\s+\d{4})', act)
+    if m:
+        data['contract_date'] = _parse_date(m.group(1))
+    else:
+        data['contract_date'] = ''
+
     # ── Строки товаров/услуг ──────────────────────────────────────────────
     # Try page 2 first: "1 Интеллектуальный номер - 362 МЕС 1 9689.00 9 689.00 без акциза 22% 2 131.58 11 820.58"
     items = []
