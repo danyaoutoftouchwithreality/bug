@@ -267,7 +267,7 @@
     <div class="step-line"></div>
     <div class="step" id="step3">
       <div class="step-num">3</div>
-      <span>Скачать XML</span>
+      <span>Скачать файлы</span>
     </div>
   </div>
 
@@ -587,7 +587,7 @@
           <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/>
           <line x1="10" y1="12" x2="14" y2="12"/>
         </svg>
-        Создать XML и скачать
+        Создать XML и PDF
       </button>
     </div>
 
@@ -596,9 +596,27 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        XML сформирован!
+        Файлы сформированы!
       </h3>
-      <p>Файл скачан. Откройте Контур.Диадок, перейдите в раздел «Входящие» или «Исходящие» и загрузите XML через кнопку «Загрузить документ».</p>
+      <p style="margin-bottom:16px">Скачайте XML для Диадок и PDF (страницы 1–2 исходного файла).</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a id="download-xml-btn" href="#" class="btn btn-primary" download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Скачать XML
+        </a>
+        <a id="download-pdf-btn" href="#" class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Скачать PDF (стр. 1–2)
+        </a>
+      </div>
     </div>
 
   </form>
@@ -612,6 +630,8 @@
   const errorBox = document.getElementById('error-box');
   const formSection = document.getElementById('form-section');
   const uploadCard = document.getElementById('upload-card');
+
+  let uploadedFile = null;
 
   // Drag & drop
   uploadZone.addEventListener('click', () => fileInput.click());
@@ -633,6 +653,7 @@
       return;
     }
 
+    uploadedFile = file;
     errorBox.style.display = 'none';
     uploadZone.style.display = 'none';
     spinner.style.display = 'block';
@@ -713,11 +734,10 @@
     }
   }
 
-  // Form submit → download XML
+  // Form submit → generate XML + PDF
   document.getElementById('form-section').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    // Проверяем обязательные поля (required не работает при AJAX)
     const num = document.getElementById('invoice_number').value.trim();
     const dat = document.getElementById('invoice_date').value.trim();
     if (!num || !dat) {
@@ -730,31 +750,40 @@
     btn.textContent = 'Генерирую…';
 
     try {
-      const res = await fetch('/generate', { method: 'POST', body: new FormData(this) });
+      const fd = new FormData(this);
+      if (uploadedFile) fd.append('pdf_file', uploadedFile);
+
+      const res = await fetch('/generate', { method: 'POST', body: fd });
       if (!res.ok) {
         const err = await res.json();
         alert('Ошибка: ' + (err.detail || 'неизвестная ошибка'));
         return;
       }
-      // Trigger download
-      const blob = await res.blob();
-      const cd = res.headers.get('Content-Disposition') || '';
-      const fnMatch = cd.match(/filename="?([^"]+)"?/);
-      const filename = fnMatch ? fnMatch[1] : 'upd.xml';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      const result = await res.json();
+
+      // Настраиваем кнопки скачивания
+      const xmlBtn = document.getElementById('download-xml-btn');
+      xmlBtn.href = `/download/xml/${result.result_id}`;
+      xmlBtn.download = result.xml_name;
+
+      const pdfBtn = document.getElementById('download-pdf-btn');
+      if (result.has_pdf) {
+        pdfBtn.href = `/download/pdf/${result.result_id}`;
+        pdfBtn.download = result.pdf_name;
+        pdfBtn.style.display = '';
+      } else {
+        pdfBtn.style.display = 'none';
+      }
 
       document.getElementById('success-box').style.display = 'block';
       setStep(3);
+      document.getElementById('success-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } finally {
       btn.disabled = false;
       btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/>
-        <line x1="10" y1="12" x2="14" y2="12"/></svg> Создать XML и скачать`;
+        <line x1="10" y1="12" x2="14" y2="12"/></svg> Создать XML и PDF`;
     }
   });
 
@@ -767,6 +796,7 @@
     formSection.style.display = 'none';
     uploadZone.style.display = 'block';
     fileInput.value = '';
+    uploadedFile = null;
     document.getElementById('success-box').style.display = 'none';
     errorBox.style.display = 'none';
     setStep(1);
