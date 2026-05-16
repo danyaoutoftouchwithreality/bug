@@ -163,7 +163,7 @@ def extract_invoice_data(pdf_path: str) -> dict:
         contract = data["contract_number"]
         items.append({
             'num': m.group(1),
-            'name': f'Услуги связи по контракту{contract} - {m.group(2)}' if contract else m.group(2),
+            'name': f'Услуги связи по контракту {contract} - {m.group(2)}' if contract else m.group(2),
             'description': '',
             'unit_code': m.group(3),
             'unit_name': m.group(4),
@@ -187,7 +187,7 @@ def extract_invoice_data(pdf_path: str) -> dict:
             contract = data["contract_number"]
             items.append({
                 'num': '1',
-                'name': f'Услуги связи по контракту{contract} - {m.group(1)}' if contract else m.group(1),
+                'name': f'Услуги связи по контракту {contract} - {m.group(1)}' if contract else m.group(1),
                 'description': '',
                 'unit_code': '362',
                 'unit_name': m.group(2),
