@@ -160,10 +160,11 @@ def extract_invoice_data(pdf_path: str) -> dict:
         sf,
     )
     if m:
+        contract = data["contract_number"]
         items.append({
             'num': m.group(1),
-            'name': m.group(2),
-            'description': f'Услуги связи по контракту {data["contract_number"]}',
+            'name': f'Услуги связи по контракту {contract}. {m.group(2)}' if contract else m.group(2),
+            'description': '',
             'unit_code': m.group(3),
             'unit_name': m.group(4),
             'qty': m.group(5),
@@ -183,10 +184,11 @@ def extract_invoice_data(pdf_path: str) -> dict:
             act,
         )
         if m:
+            contract = data["contract_number"]
             items.append({
                 'num': '1',
-                'name': m.group(1),
-                'description': f'Услуги связи по контракту {data["contract_number"]}',
+                'name': f'Услуги связи по контракту {contract}. {m.group(1)}' if contract else m.group(1),
+                'description': '',
                 'unit_code': '362',
                 'unit_name': m.group(2),
                 'qty': m.group(3),
