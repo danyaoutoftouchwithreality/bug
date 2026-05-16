@@ -133,8 +133,8 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
 
     # ── СвСчФакт ──────────────────────────────────────────────────────────
     sv_sf = SubElement(doc, 'СвСчФакт')
-    sv_sf.set('НомерСчФ', data.get('invoice_number', ''))
-    sv_sf.set('ДатаСчФ',  data.get('invoice_date', ''))
+    sv_sf.set('НомерДок', data.get('invoice_number', ''))
+    sv_sf.set('ДатаДок',  data.get('invoice_date', ''))
 
     # Продавец
     sv_prod = SubElement(sv_sf, 'СвПрод')
