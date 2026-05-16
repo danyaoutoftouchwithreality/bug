@@ -6,7 +6,6 @@ import uuid
 import datetime
 import re
 from xml.etree.ElementTree import Element, SubElement, tostring
-from xml.dom import minidom
 
 
 # ── Вспомогательные функции ───────────────────────────────────────────────
@@ -332,11 +331,5 @@ def generate_xml(data: dict) -> tuple[bytes, str]:
         fio_podp.set('Отчество', otch)
 
     # ── Сериализация в windows-1251 ───────────────────────────────────────
-    raw = tostring(root, encoding='unicode')
-    dom = minidom.parseString(raw)
-    pretty = dom.toprettyxml(indent='\t', encoding=None)
-    lines = pretty.split('\n')
-    if lines[0].startswith('<?xml'):
-        lines = lines[1:]
-    xml_str = '<?xml version="1.0" encoding="windows-1251"?>\n' + '\n'.join(lines)
-    return xml_str.encode('windows-1251'), file_id
+    xml_bytes = tostring(root, encoding='windows-1251', xml_declaration=True)
+    return xml_bytes, file_id
