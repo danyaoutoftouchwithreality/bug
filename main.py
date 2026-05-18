@@ -225,6 +225,16 @@ async def generate(
         'total_with_vat': total_with_vat,
     }
 
+    # DEBUG — временный лог, удалить после диагностики
+    import sys
+    gar_debug = data.get('buyer_gar', {})
+    print(
+        f"[DEBUG /generate] buyer_region_code={repr(gar_debug.get('region_code'))} "
+        f"zip={repr(gar_debug.get('zip'))} nasel_naim={repr(gar_debug.get('nasel_naim'))} "
+        f"_has_gar={bool(gar_debug and gar_debug.get('region_code'))}",
+        file=sys.stderr,
+    )
+
     try:
         xml_bytes, file_id = generate_xml(data)
     except Exception as e:
