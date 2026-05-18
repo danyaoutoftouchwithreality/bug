@@ -98,7 +98,9 @@ def _build_adr_gar(parent: Element, addr: dict):
 
 
 def _has_gar(addr: dict) -> bool:
-    return bool(addr and (addr.get('region_code') or addr.get('nasel_naim') or addr.get('zip')))
+    # АдрГАР строим только если region_code заполнен явно (пользователем).
+    # zip/city/street от парсера недостаточно — иначе полный buyer_address теряется.
+    return bool(addr and addr.get('region_code'))
 
 
 # ── Основная функция генерации ────────────────────────────────────────────
