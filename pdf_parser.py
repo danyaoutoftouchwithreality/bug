@@ -33,6 +33,88 @@ def _first(pattern: str, text: str, group: int = 1) -> str:
     return m.group(group).strip() if m else ''
 
 
+_STREET_TYPES = [
+    (r'УЛИЦА|УЛ\.', 'ул.'),
+    (r'НАБЕРЕЖНАЯ|НАБ\.', 'наб.'),
+    (r'ПЕРЕУЛОК|ПЕР\.?(?=[\s,]|\Z)', 'пер.'),
+    (r'ШОССЕ', 'шоссе'),
+    (r'ПРОСПЕКТ|ПРОСП\.|ПР-КТ', 'просп.'),
+    (r'БУЛЬВАР|БУЛЬВ\.|Б-Р', 'бульв.'),
+    (r'ПЛОЩАДЬ|ПЛ\.', 'пл.'),
+    (r'АЛЛЕЯ', 'аллея'),
+]
+
+
+def _parse_address_gar(addr: str) -> dict:
+    """
+    Разбирает сырую строку российского адреса на структурированные поля АдрГАР.
+    Если поле не удалось определить надёжно — возвращает пустую строку.
+    Никаких захардкоженных fallback-значений.
+    """
+    g = {k: '' for k in [
+        'zip', 'nasel_vid', 'nasel_naim',
+        'street_tip', 'street_naim',
+        'house_tip', 'house_num',
+        'room_tip', 'room_num',
+    ]}
+    if not addr:
+        return g
+
+    # Индекс: первые 6 цифр подряд
+    m = re.search(r'\b(\d{6})\b', addr)
+    if m:
+        g['zip'] = m.group(1)
+
+    # Дом: «Д. 39», «д.19»
+    m = re.search(r'\bД\.\s*([^\s,]+)', addr, re.IGNORECASE)
+    if m:
+        g['house_num'] = m.group(1)
+        g['house_tip'] = 'д.'
+
+    # Помещение: ПОМЕЩ. → первое вхождение; иначе кв.
+    rooms = re.findall(r'ПОМЕЩ\.\s*([^\s,]+)', addr, re.IGNORECASE)
+    if rooms:
+        g['room_num'] = rooms[0]
+        g['room_tip'] = 'помещ.'
+    else:
+        m = re.search(r'\bкв\.\s*([^\s,]+)', addr, re.IGNORECASE)
+        if m:
+            g['room_num'] = m.group(1)
+            g['room_tip'] = 'кв.'
+
+    # Улица: пробуем «ТИП ИМЯ», потом «ИМЯ ТИП»
+    for pat, canonical in _STREET_TYPES:
+        m = re.search(
+            rf'\b(?:{pat})\s+([А-ЯЁа-яё][А-ЯЁа-яё\s-]*?)(?=\s*,|\s+Д\.|\Z)',
+            addr, re.IGNORECASE,
+        )
+        if m:
+            g['street_tip'] = canonical
+            g['street_naim'] = m.group(1).strip().title()
+            break
+        m = re.search(
+            rf'([А-ЯЁа-яё][А-ЯЁа-яё-]*)\s+(?:{pat})',
+            addr, re.IGNORECASE,
+        )
+        if m:
+            g['street_tip'] = canonical
+            g['street_naim'] = m.group(1).strip().title()
+            break
+
+    # Город: «ГОРОД МОСКВА» / «Екатеринбург г» / «САНКТ-ПЕТЕРБУРГ Г.»
+    m = re.search(r'\bГОРОД\s+([А-ЯЁа-яё][А-ЯЁа-яё-]+)', addr, re.IGNORECASE)
+    if m:
+        g['nasel_vid'] = 'г.'
+        g['nasel_naim'] = m.group(1).title()
+    else:
+        m = re.search(r'([А-ЯЁа-яё][А-ЯЁа-яё-]+)\s+[Гг](?:\.|\s|\Z)', addr)
+        if m:
+            g['nasel_vid'] = 'г.'
+            g['nasel_naim'] = m.group(1).title()
+
+    return g
+
+
 def extract_invoice_data(pdf_path: str) -> dict:
     import pdfplumber  # ленивый импорт — не тормозит старт сервера
     pages = []
@@ -136,6 +218,7 @@ def extract_invoice_data(pdf_path: str) -> dict:
 
     data['buyer_name'] = buyer_name
     data['buyer_address'] = buyer_address
+    data['buyer_gar'] = _parse_address_gar(buyer_address)
 
     # Buyer INN: 12-digit (ИП) or 10-digit (ЮЛ)
     m = re.search(r'(\d{12})/-', sf)
