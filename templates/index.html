@@ -399,15 +399,15 @@
         </div>
         <div class="field">
           <label>Код региона</label>
-          <input type="text" name="buyer_region_code" id="buyer_region_code" placeholder="77">
+          <input type="text" name="buyer_region_code" id="buyer_region_code" placeholder="код КЛАДР">
         </div>
         <div class="field">
           <label>Наименование региона</label>
-          <input type="text" name="buyer_region_name" id="buyer_region_name" placeholder="Московская область">
+          <input type="text" name="buyer_region_name" id="buyer_region_name" placeholder="заполните вручную">
         </div>
         <div class="field">
           <label>Муниципальный район</label>
-          <input type="text" name="buyer_munitsip_naim" id="buyer_munitsip_naim" placeholder="Городской округ Москва">
+          <input type="text" name="buyer_munitsip_naim" id="buyer_munitsip_naim" placeholder="заполните вручную">
         </div>
         <div class="field">
           <label>Населённый пункт</label>
@@ -705,7 +705,13 @@
     set('buyer_kpp', d.buyer_kpp);
     set('buyer_address', d.buyer_address);
 
-    // АдрГАР — заполняем только то, что распознал парсер; пустое → поле остаётся пустым
+    // АдрГАР — заполняем только то, что распознал парсер; пустое → поле очищается.
+    // Поля, которые парсер не умеет извлекать, сбрасываем явно, чтобы не оставлять
+    // значения из предыдущей сессии или браузерного кеша.
+    set('buyer_region_code',  '');
+    set('buyer_region_name',  '');
+    set('buyer_munitsip_naim', '');
+
     const gar = d.buyer_gar || {};
     set('buyer_zip',         gar.zip);
     set('buyer_nasel_vid',   gar.nasel_vid);
