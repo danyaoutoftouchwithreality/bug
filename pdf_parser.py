@@ -99,17 +99,43 @@ def extract_invoice_data(pdf_path: str) -> dict:
         data['seller_inn'] = ''
         data['seller_kpp'] = ''
 
-    # ── Покупатель ─────────────────────────────────────────────────────────
-    m = re.search(r'(Индивидуальный предприниматель\s+\S+\s+\S+\s+\S+)', sf)
+    # ── Покупатель: имя ────────────────────────────────────────────────────
+    # Источник 1 (приоритет): акт — покупатель стоит между «Сервисез"), и» и
+    # «(именуемым в дальнейшем "Клиент")». Полное название без обрезания.
+    buyer_name = ''
+    m = re.search(
+        r'именуемой в дальнейшем[^)]+\),\s*и\s*\n(.+?)\s*\n\s*\(именуемым',
+        act,
+        re.DOTALL,
+    )
     if m:
-        data['buyer_name'] = m.group(1).strip()
-    else:
-        # Юр. лицо
-        m = re.search(r'Покупатель\s*\n(.+)', sf)
-        data['buyer_name'] = m.group(1).strip() if m else ''
+        buyer_name = m.group(1).strip()
 
-    m = re.search(r'(6\d{5}[^\n]+Свердловская[^\n]+)', sf)
-    data['buyer_address'] = m.group(1).strip() if m else ''
+    # Источник 2: «Покупатель: ИМЯ» на любой странице, кроме строки
+    # «Покупатель: Юридический адрес:» (это двухколоночный заголовок стр. 1).
+    if not buyer_name:
+        all_pages_text = '\n'.join(pages)
+        m = re.search(r'Покупатель:\s+(?!Юридический)(.+)', all_pages_text)
+        if m:
+            buyer_name = m.group(1).strip()
+
+    # Источник 3 (запасной): блок счёт-фактуры — после ИНН/КПП продавца и двух
+    # строк «-» до ИНН покупателя. Попутно извлекает адрес.
+    buyer_address = ''
+    m = re.search(
+        r'\d{10}/\d{9}\s*\n-\s*\n-\s*\n(.+?)(?=\n(?:\d{12}/-|\d{10}/\d{9}))',
+        sf,
+        re.DOTALL,
+    )
+    if m:
+        buyer_block = m.group(1).strip()
+        buyer_lines = [l.strip() for l in buyer_block.split('\n') if l.strip()]
+        if not buyer_name:
+            buyer_name = buyer_lines[0] if buyer_lines else ''
+        buyer_address = ' '.join(buyer_lines[1:]) if len(buyer_lines) > 1 else ''
+
+    data['buyer_name'] = buyer_name
+    data['buyer_address'] = buyer_address
 
     # Buyer INN: 12-digit (ИП) or 10-digit (ЮЛ)
     m = re.search(r'(\d{12})/-', sf)
