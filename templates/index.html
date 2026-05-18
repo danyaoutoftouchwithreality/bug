@@ -395,51 +395,51 @@
       <div class="grid cols3">
         <div class="field">
           <label>Индекс</label>
-          <input type="text" name="buyer_zip" id="buyer_zip" placeholder="620027">
+          <input type="text" name="buyer_zip" id="buyer_zip" placeholder="123456">
         </div>
         <div class="field">
           <label>Код региона</label>
-          <input type="text" name="buyer_region_code" id="buyer_region_code" placeholder="66">
+          <input type="text" name="buyer_region_code" id="buyer_region_code" placeholder="77">
         </div>
         <div class="field">
           <label>Наименование региона</label>
-          <input type="text" name="buyer_region_name" id="buyer_region_name" placeholder="Свердловская область">
+          <input type="text" name="buyer_region_name" id="buyer_region_name" placeholder="Московская область">
         </div>
         <div class="field">
           <label>Муниципальный район</label>
-          <input type="text" name="buyer_munitsip_naim" id="buyer_munitsip_naim" placeholder="Город Екатеринбург">
+          <input type="text" name="buyer_munitsip_naim" id="buyer_munitsip_naim" placeholder="Городской округ Москва">
         </div>
         <div class="field">
           <label>Населённый пункт</label>
-          <input type="text" name="buyer_nasel_naim" id="buyer_nasel_naim" placeholder="Екатеринбург">
+          <input type="text" name="buyer_nasel_naim" id="buyer_nasel_naim" placeholder="Москва">
         </div>
         <div class="field">
           <label>Тип нас. пункта</label>
-          <input type="text" name="buyer_nasel_vid" id="buyer_nasel_vid" value="г.">
+          <input type="text" name="buyer_nasel_vid" id="buyer_nasel_vid" placeholder="г.">
         </div>
         <div class="field">
           <label>Улица/переулок</label>
-          <input type="text" name="buyer_street_naim" id="buyer_street_naim" placeholder="Красный">
+          <input type="text" name="buyer_street_naim" id="buyer_street_naim" placeholder="Ленина">
         </div>
         <div class="field">
           <label>Тип улицы</label>
-          <input type="text" name="buyer_street_tip" id="buyer_street_tip" value="пер.">
+          <input type="text" name="buyer_street_tip" id="buyer_street_tip" placeholder="ул.">
         </div>
         <div class="field">
           <label>Дом №</label>
-          <input type="text" name="buyer_house_num" id="buyer_house_num" placeholder="19">
+          <input type="text" name="buyer_house_num" id="buyer_house_num" placeholder="1">
         </div>
         <div class="field">
           <label>Тип дома</label>
-          <input type="text" name="buyer_house_tip" id="buyer_house_tip" value="д.">
+          <input type="text" name="buyer_house_tip" id="buyer_house_tip" placeholder="д.">
         </div>
         <div class="field">
           <label>Помещение №</label>
-          <input type="text" name="buyer_room_num" id="buyer_room_num" placeholder="22">
+          <input type="text" name="buyer_room_num" id="buyer_room_num" placeholder="1">
         </div>
         <div class="field">
           <label>Тип помещения</label>
-          <input type="text" name="buyer_room_tip" id="buyer_room_tip" value="кв.">
+          <input type="text" name="buyer_room_tip" id="buyer_room_tip" placeholder="помещ.">
         </div>
         <div class="field" style="grid-column:span 3">
           <label>ФИАС/ГАР идентификатор (необязательно)</label>
@@ -704,6 +704,19 @@
     set('buyer_inn', d.buyer_inn);
     set('buyer_kpp', d.buyer_kpp);
     set('buyer_address', d.buyer_address);
+
+    // АдрГАР — заполняем только то, что распознал парсер; пустое → поле остаётся пустым
+    const gar = d.buyer_gar || {};
+    set('buyer_zip',         gar.zip);
+    set('buyer_nasel_vid',   gar.nasel_vid);
+    set('buyer_nasel_naim',  gar.nasel_naim);
+    set('buyer_street_tip',  gar.street_tip);
+    set('buyer_street_naim', gar.street_naim);
+    set('buyer_house_tip',   gar.house_tip);
+    set('buyer_house_num',   gar.house_num);
+    set('buyer_room_tip',    gar.room_tip);
+    set('buyer_room_num',    gar.room_num);
+
     set('currency_code', d.currency_code || '643');
     set('shipment_doc_name', d.shipment_doc_name);
     set('shipment_doc_number', d.shipment_doc_number);
